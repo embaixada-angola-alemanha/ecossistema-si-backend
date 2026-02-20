@@ -4,6 +4,7 @@ import ao.gov.embaixada.si.dto.EventCreateRequest;
 import ao.gov.embaixada.si.dto.EventResponse;
 import ao.gov.embaixada.si.entity.Event;
 import ao.gov.embaixada.si.enums.EstadoConteudo;
+import ao.gov.embaixada.si.exception.IncompleteContentException;
 import ao.gov.embaixada.si.exception.InvalidStateTransitionException;
 import ao.gov.embaixada.si.exception.ResourceNotFoundException;
 import ao.gov.embaixada.si.repository.EventRepository;
@@ -39,9 +40,31 @@ class EventServiceTest {
         event.setId(UUID.randomUUID());
         event.setTituloPt(titulo);
         event.setTituloEn("English Title");
+        event.setTituloDe("German Title");
+        event.setTituloCs("Czech Title");
+        event.setDescricaoPt("Descricao PT");
+        event.setDescricaoEn("Description EN");
+        event.setDescricaoDe("Beschreibung DE");
+        event.setDescricaoCs("Popis CS");
+        event.setLocalPt("Embaixada de Angola, Berlim");
+        event.setLocalEn("Embassy of Angola, Berlin");
         event.setEstado(estado);
         event.setDataInicio(Instant.parse("2026-11-11T09:00:00Z"));
         event.setDataFim(Instant.parse("2026-11-11T18:00:00Z"));
+        event.setTipoEvento("PROTOCOLO");
+        event.setCreatedAt(Instant.now());
+        event.setUpdatedAt(Instant.now());
+        return event;
+    }
+
+    private Event createIncompleteEventEntity(EstadoConteudo estado) {
+        Event event = new Event();
+        event.setId(UUID.randomUUID());
+        event.setTituloPt("Evento Incompleto");
+        event.setDescricaoPt("Descricao PT");
+        event.setLocalPt("Embaixada");
+        event.setEstado(estado);
+        event.setDataInicio(Instant.parse("2026-11-11T09:00:00Z"));
         event.setTipoEvento("PROTOCOLO");
         event.setCreatedAt(Instant.now());
         event.setUpdatedAt(Instant.now());
@@ -240,5 +263,33 @@ class EventServiceTest {
         List<EventResponse> result = eventService.findByDateRange(start, end);
 
         assertEquals(1, result.size());
+    }
+
+    @Test
+    void shouldRejectPublishWithMissingTranslations() {
+        UUID id = UUID.randomUUID();
+        Event entity = createIncompleteEventEntity(EstadoConteudo.REVIEW);
+        entity.setId(id);
+        when(eventRepository.findById(id)).thenReturn(Optional.of(entity));
+
+        IncompleteContentException ex = assertThrows(IncompleteContentException.class,
+                () -> eventService.updateEstado(id, EstadoConteudo.PUBLISHED));
+
+        assertTrue(ex.getMessage().contains("tituloEn"));
+        assertTrue(ex.getMessage().contains("descricaoEn"));
+        assertTrue(ex.getMessage().contains("localEn"));
+    }
+
+    @Test
+    void shouldPublishWithAllTranslationsComplete() {
+        UUID id = UUID.randomUUID();
+        Event entity = createEventEntity("Complete Event", EstadoConteudo.REVIEW);
+        entity.setId(id);
+        when(eventRepository.findById(id)).thenReturn(Optional.of(entity));
+        when(eventRepository.save(any(Event.class))).thenReturn(entity);
+
+        EventResponse response = eventService.updateEstado(id, EstadoConteudo.PUBLISHED);
+
+        assertNotNull(response);
     }
 }

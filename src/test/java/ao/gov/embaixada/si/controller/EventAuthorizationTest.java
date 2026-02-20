@@ -58,8 +58,8 @@ class EventAuthorizationTest {
 
     private EventCreateRequest sampleRequest() {
         return new EventCreateRequest(
-                "Event Title", null, null, null, null, null, null, null,
-                null, null, Instant.now(), null, null, null);
+                "Event Title", null, null, null, "Descricao", null, null, null,
+                "Embaixada", null, Instant.now(), null, null, "PROTOCOLO");
     }
 
     @Test

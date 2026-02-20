@@ -11,14 +11,14 @@ public record EventCreateRequest(
         String tituloEn,
         String tituloDe,
         String tituloCs,
-        String descricaoPt,
+        @NotBlank String descricaoPt,
         String descricaoEn,
         String descricaoDe,
         String descricaoCs,
-        String localPt,
+        @NotBlank String localPt,
         String localEn,
         @NotNull Instant dataInicio,
         Instant dataFim,
         UUID imageId,
-        String tipoEvento
+        @NotBlank String tipoEvento
 ) {}

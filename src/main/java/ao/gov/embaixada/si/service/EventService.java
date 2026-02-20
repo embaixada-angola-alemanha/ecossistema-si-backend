@@ -4,6 +4,7 @@ import ao.gov.embaixada.si.dto.EventCreateRequest;
 import ao.gov.embaixada.si.dto.EventResponse;
 import ao.gov.embaixada.si.entity.Event;
 import ao.gov.embaixada.si.enums.EstadoConteudo;
+import ao.gov.embaixada.si.exception.IncompleteContentException;
 import ao.gov.embaixada.si.exception.InvalidStateTransitionException;
 import ao.gov.embaixada.si.exception.ResourceNotFoundException;
 import ao.gov.embaixada.si.repository.EventRepository;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -79,6 +81,9 @@ public class EventService {
                 .orElseThrow(() -> new ResourceNotFoundException("Event not found: " + id));
 
         validateTransition(event.getEstado(), novoEstado);
+        if (novoEstado == EstadoConteudo.PUBLISHED) {
+            validateContentForPublishing(event);
+        }
         event.setEstado(novoEstado);
         return toResponse(eventRepository.save(event));
     }
@@ -101,6 +106,29 @@ public class EventService {
             throw new InvalidStateTransitionException(
                     "Cannot transition event from " + current + " to " + target);
         }
+    }
+
+    private void validateContentForPublishing(Event event) {
+        List<String> missing = new ArrayList<>();
+        if (isBlank(event.getTituloPt())) missing.add("tituloPt");
+        if (isBlank(event.getTituloEn())) missing.add("tituloEn");
+        if (isBlank(event.getTituloDe())) missing.add("tituloDe");
+        if (isBlank(event.getTituloCs())) missing.add("tituloCs");
+        if (isBlank(event.getDescricaoPt())) missing.add("descricaoPt");
+        if (isBlank(event.getDescricaoEn())) missing.add("descricaoEn");
+        if (isBlank(event.getDescricaoDe())) missing.add("descricaoDe");
+        if (isBlank(event.getDescricaoCs())) missing.add("descricaoCs");
+        if (isBlank(event.getLocalPt())) missing.add("localPt");
+        if (isBlank(event.getLocalEn())) missing.add("localEn");
+        if (isBlank(event.getTipoEvento())) missing.add("tipoEvento");
+        if (!missing.isEmpty()) {
+            throw new IncompleteContentException(
+                    "Cannot publish event. Missing required fields: " + String.join(", ", missing));
+        }
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 
     private void mapRequestToEntity(EventCreateRequest request, Event event) {
